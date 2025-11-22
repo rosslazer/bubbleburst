@@ -21,6 +21,35 @@ TICKERS: Dict[str, float] = {
     "AMZN": 120.0,
 }
 
+BAGHOLDER_SERIES = [
+    {
+        "label": "CoreWeave (est.)",
+        "color": "#ef4444",
+        "data": [
+            {"x": "2025-01-02", "y": 100},
+            {"x": "2025-01-09", "y": 94},
+            {"x": "2025-01-16", "y": 88},
+            {"x": "2025-01-23", "y": 77},
+            {"x": "2025-01-30", "y": 64},
+            {"x": "2025-02-06", "y": 53},
+            {"x": "2025-02-13", "y": 50},
+        ],
+    },
+    {
+        "label": "Nebius (est.)",
+        "color": "#22c55e",
+        "data": [
+            {"x": "2025-01-02", "y": 100},
+            {"x": "2025-01-09", "y": 93},
+            {"x": "2025-01-16", "y": 85},
+            {"x": "2025-01-23", "y": 74},
+            {"x": "2025-01-30", "y": 63},
+            {"x": "2025-02-06", "y": 53},
+            {"x": "2025-02-13", "y": 49},
+        ],
+    },
+]
+
 
 def _change_pct(series: List[float], days: int) -> float:
     if len(series) <= days:
@@ -45,6 +74,7 @@ def _build_sample_dataset() -> dict:
             "source": "sample",
             "note": "Generated offline; GitHub Actions will replace with live data when network is available.",
         },
+        "bagholders": BAGHOLDER_SERIES,
     }
 
     for symbol, base_price in TICKERS.items():
@@ -92,6 +122,7 @@ def _fetch_live_data() -> Optional[dict]:
         "metadata": {
             "source": "yfinance",
         },
+        "bagholders": BAGHOLDER_SERIES,
     }
 
     for symbol in TICKERS:
