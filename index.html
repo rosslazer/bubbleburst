@@ -124,7 +124,7 @@
 
         <div class="section">
             <h2>🏭 Nvidia Data Center Bagholders</h2>
-            <p class="indicator-label" style="text-align: center; margin-bottom: 20px;">CRWV and NBIS pulled from the cached GitHub Action feed — no browser-side price scraping.</p>
+            <p class="indicator-label" style="text-align: center; margin-bottom: 20px;">Static private-market markdown estimates — no live pricing feeds here.</p>
             <div class="chart-container" style="margin-bottom: 30px;">
                 <canvas id="bagholderChart"></canvas>
             </div>
@@ -194,13 +194,13 @@
                         legend: { display: true, labels: { color: '#1f2937', font: { size: 13, weight: 'bold' } } },
                         tooltip: {
                             callbacks: {
-                                label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}`
+                                label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(0)} (index)`
                             }
                         }
                     },
                     scales: {
                         x: { type: 'time', time: { unit: 'week' }, ticks: { color: '#1f2937' }, grid: { color: 'rgba(0, 0, 0, 0.1)' } },
-                        y: { beginAtZero: false, ticks: { color: '#1f2937', callback: value => `$${value.toFixed(2)}` }, grid: { color: 'rgba(0, 0, 0, 0.1)' } }
+                        y: { beginAtZero: false, ticks: { color: '#1f2937', callback: value => `${value.toFixed(0)}` }, grid: { color: 'rgba(0, 0, 0, 0.1)' } }
                     },
                     interaction: { mode: 'nearest', axis: 'x', intersect: false }
                 }
