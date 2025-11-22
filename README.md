@@ -32,3 +32,9 @@ python scripts/update_stocks.py --demo
 ## Notes
 - The GitHub Action commits updates to `data/stocks.json` using the repository's `GITHUB_TOKEN`.
 - The chart includes NVDA, MSFT, GOOGL, META, and AMZN; add or remove tickers by editing `scripts/update_stocks.py` and re-running the updater.
+
+## Deploying to GitHub Pages
+1. In the repo settings, open **Pages** and set the source to **GitHub Actions**.
+2. The included workflow `.github/workflows/deploy-pages.yml` publishes the root of the repository (including `data/stocks.json`) to the `github-pages` environment on every push to `main` or via **Run workflow**.
+3. After the first deploy, GitHub shows the public URL in the workflow summary and on the Pages settings screen. For a project site, it will usually look like `https://<username>.github.io/<repo>/`.
+
