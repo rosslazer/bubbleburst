@@ -21,6 +21,29 @@ TICKERS: Dict[str, float] = {
     "AMZN": 120.0,
 }
 
+BAGHOLDER_TICKERS: Dict[str, Dict[str, float]] = {
+    "CRWV": {"base": 8.5, "color": "#ef4444", "label": "CoreWeave"},
+    "NBIS": {"base": 12.0, "color": "#22c55e", "label": "Nebius"},
+}
+
+
+def _bagholder_downtrend(symbol: str, base_price: float, today: datetime.date) -> List[dict]:
+    """Generate a deterministic 7-week downward series for sample output."""
+
+    series = []
+    for weeks_ago in range(6, -1, -1):
+        date = today - timedelta(weeks=weeks_ago)
+        # Steepen the decline toward ~50% over the window
+        discount = 0.05 * (6 - weeks_ago)
+        price = max(0.5, base_price * (1 - discount))
+        series.append(
+            {
+                "x": datetime.combine(date, datetime.min.time(), tzinfo=timezone.utc).isoformat(),
+                "y": round(price, 2),
+            }
+        )
+    return series
+
 
 def _change_pct(series: List[float], days: int) -> float:
     if len(series) <= days:
@@ -45,6 +68,7 @@ def _build_sample_dataset() -> dict:
             "source": "sample",
             "note": "Generated offline; GitHub Actions will replace with live data when network is available.",
         },
+        "bagholders": [],
     }
 
     for symbol, base_price in TICKERS.items():
@@ -78,6 +102,16 @@ def _build_sample_dataset() -> dict:
                 "changePct30d": _change_pct(prices, 30),
             }
 
+    for symbol, info in BAGHOLDER_TICKERS.items():
+        dataset["bagholders"].append(
+            {
+                "symbol": symbol,
+                "label": info["label"],
+                "color": info["color"],
+                "data": _bagholder_downtrend(symbol, info["base"], today),
+            }
+        )
+
     return dataset
 
 
@@ -92,9 +126,10 @@ def _fetch_live_data() -> Optional[dict]:
         "metadata": {
             "source": "yfinance",
         },
+        "bagholders": [],
     }
 
-    for symbol in TICKERS:
+    for symbol in {**TICKERS, **{k: v["base"] for k, v in BAGHOLDER_TICKERS.items()}}:
         ticker = yf.Ticker(symbol)
         history = ticker.history(period="1y", interval="1d")
         if history.empty:
@@ -113,19 +148,30 @@ def _fetch_live_data() -> Optional[dict]:
 
         market_cap = round(prices[-1] * shares, 2) if shares else None
 
-        dataset["series"][symbol] = {
-            "symbol": symbol,
-            "timestamps": timestamps,
-            "closes": prices,
-            "sharesOutstanding": shares,
-            "marketCap": market_cap,
-        }
-
-        if symbol == "NVDA":
-            dataset["sentiment"][symbol] = {
-                "changePct5d": _change_pct(prices, 5),
-                "changePct30d": _change_pct(prices, 30),
+        if symbol in TICKERS:
+            dataset["series"][symbol] = {
+                "symbol": symbol,
+                "timestamps": timestamps,
+                "closes": prices,
+                "sharesOutstanding": shares,
+                "marketCap": market_cap,
             }
+
+            if symbol == "NVDA":
+                dataset["sentiment"][symbol] = {
+                    "changePct5d": _change_pct(prices, 5),
+                    "changePct30d": _change_pct(prices, 30),
+                }
+        else:
+            info = BAGHOLDER_TICKERS[symbol]
+            dataset["bagholders"].append(
+                {
+                    "symbol": symbol,
+                    "label": info["label"],
+                    "color": info["color"],
+                    "data": [{"x": ts, "y": price} for ts, price in zip(timestamps, prices)],
+                }
+            )
 
     return dataset
 

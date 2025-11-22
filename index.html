@@ -62,7 +62,7 @@
         </div>
 
         <div class="section">
-            <h2>📈 The Magnificent 7 (AI Edition)</h2>
+            <h2>📈 The Magnificent 5 (AI Edition)</h2>
             <div class="chart-container">
                 <canvas id="stockChart"></canvas>
             </div>
@@ -75,30 +75,15 @@
         </div>
 
         <div class="section">
-            <h2>🔥 Bubble Burst Indicators</h2>
+            <h2>🔥 Bubble Reality Check</h2>
+            <p class="indicator-label" style="text-align: center; margin-bottom: 20px;">We retired the vanity counters and are anchoring everything to actual stock prices.</p>
             <div class="indicators">
                 <div class="indicator">
-                    <div class="indicator-label">VCs who've said "AGI by 2025"</div>
-                    <div class="indicator-value" id="vcCounter">0</div>
+                    <div class="indicator-label">Average 5-day move across the Not-So-Magnificent 5</div>
+                    <div class="indicator-value" id="priceTrend">—</div>
                 </div>
                 <div class="indicator">
-                    <div class="indicator-label">Startups that are "ChatGPT for X"</div>
-                    <div class="indicator-value" id="startupCounter">0</div>
-                </div>
-                <div class="indicator">
-                    <div class="indicator-label">LinkedIn posts with "AI" today</div>
-                    <div class="indicator-value" id="linkedinCounter">0</div>
-                </div>
-                <div class="indicator">
-                    <div class="indicator-label">Ratio of AI hype to useful products</div>
-                    <div class="indicator-value">∞</div>
-                </div>
-                <div class="indicator">
-                    <div class="indicator-label">Companies that added "AI" to their name</div>
-                    <div class="indicator-value" id="renameCounter">0</div>
-                </div>
-                <div class="indicator">
-                    <div class="indicator-label">Nvidia's market cap in Trillions</div>
+                    <div class="indicator-label">Nvidia's market cap in Trillions (from cached price)</div>
                     <div class="indicator-value" id="nvidiaCounter">$3.4T</div>
                 </div>
             </div>
@@ -137,6 +122,26 @@
             </div>
         </div>
 
+        <div class="section">
+            <h2>🏭 Nvidia Data Center Bagholders</h2>
+            <p class="indicator-label" style="text-align: center; margin-bottom: 20px;">CRWV and NBIS pulled from the cached GitHub Action feed — no browser-side price scraping.</p>
+            <div class="chart-container" style="margin-bottom: 30px;">
+                <canvas id="bagholderChart"></canvas>
+            </div>
+            <div class="comparison">
+                <div class="comparison-item">
+                    <div class="comparison-year">CoreWeave</div>
+                    <div class="comparison-quote">Built on Nvidia GPUs, but the private-market markdowns are stacking up.</div>
+                    <div class="comparison-quote">Roughly 50% drawdown over the past month as hyperscaler demand cools.</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="comparison-year">Nebius</div>
+                    <div class="comparison-quote">Another GPU cloud darling feeling the hangover.</div>
+                    <div class="comparison-quote">Also staring at ~50% declines as AI infra spending normalizes.</div>
+                </div>
+            </div>
+        </div>
+
         <div class="footer">
             <p>Disclaimer: This is satire. We actually love AI. Please don't sue us, Big Tech.</p>
             <p style="margin-top: 10px;">Stock data cached via GitHub Actions using free Yahoo Finance data.</p>
@@ -161,30 +166,45 @@
         const daysSince = Math.floor((today - chatGPTRelease) / (1000 * 60 * 60 * 24));
         document.getElementById('daysCounter').textContent = daysSince;
 
-        function animateCounter(elementId, targetValue, suffix = '') {
-            const element = document.getElementById(elementId);
-            let current = 0;
-            const increment = targetValue / 50;
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= targetValue) {
-                    element.textContent = Math.floor(targetValue) + suffix;
-                    clearInterval(timer);
-                } else {
-                    element.textContent = Math.floor(current) + suffix;
-                }
-            }, 30);
-        }
+        const bagholderChartContext = document.getElementById('bagholderChart').getContext('2d');
+        let bagholderChart = null;
 
-        async function fetchAIMetrics() {
-            try {
-                animateCounter('vcCounter', Math.floor(daysSince * 1.2));
-                animateCounter('startupCounter', 12453);
-                animateCounter('linkedinCounter', Math.floor(Math.random() * 50000 + 80000));
-                animateCounter('renameCounter', Math.floor(daysSince * 0.8));
-            } catch (error) {
-                console.error('Error fetching AI metrics:', error);
+        function initializeBagholderChart(bagholderSeries = []) {
+            if (bagholderChart) {
+                bagholderChart.destroy();
             }
+
+            bagholderChart = new Chart(bagholderChartContext, {
+                type: 'line',
+                data: {
+                    datasets: bagholderSeries.map(series => ({
+                        label: series.label,
+                        data: series.data,
+                        borderColor: series.color,
+                        backgroundColor: `${series.color}1A`,
+                        borderWidth: 3,
+                        tension: 0.35,
+                        pointRadius: 0
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, labels: { color: '#1f2937', font: { size: 13, weight: 'bold' } } },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { type: 'time', time: { unit: 'week' }, ticks: { color: '#1f2937' }, grid: { color: 'rgba(0, 0, 0, 0.1)' } },
+                        y: { beginAtZero: false, ticks: { color: '#1f2937', callback: value => `$${value.toFixed(2)}` }, grid: { color: 'rgba(0, 0, 0, 0.1)' } }
+                    },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                }
+            });
         }
 
         function formatTrillions(number) {
@@ -198,6 +218,24 @@
             const shares = nvda.sharesOutstanding || 24.5e9;
             const marketCap = (latestPrice * shares) / 1e12;
             document.getElementById('nvidiaCounter').textContent = formatTrillions(marketCap);
+        }
+
+        function calculateChange(series, days) {
+            const closes = series?.closes;
+            if (!closes || closes.length <= days) return null;
+            const latest = closes[closes.length - 1];
+            const previous = closes[closes.length - 1 - days];
+            if (!previous) return null;
+            return ((latest - previous) / previous) * 100;
+        }
+
+        function averageChange(days) {
+            if (!stockDataset?.series) return null;
+            const changes = tickers
+                .map(symbol => calculateChange(stockDataset.series[symbol], days))
+                .filter(change => change !== null && !Number.isNaN(change));
+            if (!changes.length) return null;
+            return changes.reduce((sum, value) => sum + value, 0) / changes.length;
         }
 
         function initializeChart() {
@@ -249,18 +287,27 @@
             });
         }
 
+        function updatePriceTrend() {
+            const change = averageChange(5);
+            const trendElement = document.getElementById('priceTrend');
+            if (!trendElement) return;
+            if (change === null) {
+                trendElement.textContent = 'data unavailable';
+                return;
+            }
+            trendElement.textContent = `${change.toFixed(2)}%`;
+        }
+
         function applySentiment() {
-            const nvda = stockDataset?.series?.NVDA;
-            if (!nvda) return;
-            const change = stockDataset?.sentiment?.NVDA?.changePct5d ?? 0;
+            const change = averageChange(5);
+            if (change === null) return;
             const rotation = Math.max(-45, Math.min(45, change * 1.5));
             document.getElementById('sentimentNeedle').style.setProperty('--needle-rotation', `${rotation}deg`);
         }
 
         function updateBubbleStatus() {
-            const nvda = stockDataset?.series?.NVDA;
-            if (!nvda) return;
-            const change = stockDataset?.sentiment?.NVDA?.changePct30d ?? 0;
+            const change = averageChange(30);
+            if (change === null) return;
             let status;
             if (change > 20) status = 'NOPE';
             else if (change > 10) status = 'NOT YET';
@@ -277,7 +324,9 @@
                 const data = await response.json();
                 stockDataset = data;
                 document.getElementById('lastUpdated').textContent = new Date(data.lastUpdated).toLocaleString();
+                initializeBagholderChart(data.bagholders || []);
                 updateMarketCap();
+                updatePriceTrend();
                 initializeChart();
                 applySentiment();
                 updateBubbleStatus();
@@ -288,7 +337,6 @@
             }
         }
 
-        fetchAIMetrics();
         loadStockData();
         setInterval(loadStockData, 5 * 60 * 1000);
     </script>
