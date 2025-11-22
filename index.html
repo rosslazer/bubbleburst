@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Has The AI Bubble Burst?</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            overflow-x: hidden;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .hero { text-align: center; padding: 80px 20px 60px; animation: fadeIn 1s ease-in; }
+        .hero h1 { font-size: 5rem; font-weight: 900; letter-spacing: -2px; margin-bottom: 30px; text-shadow: 3px 3px 6px rgba(0,0,0,0.3); }
+        .bubble-status { font-size: 8rem; font-weight: 900; color: #ffd700; text-shadow: 4px 4px 8px rgba(0,0,0,0.4); animation: pulse 2s ease-in-out infinite; margin: 30px 0; }
+        .days-counter { font-size: 2rem; margin: 20px 0; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; backdrop-filter: blur(10px); }
+        .days-number { font-size: 4rem; font-weight: 900; color: #ffd700; }
+        .subtext { font-size: 1.2rem; opacity: 0.8; font-style: italic; margin-top: 10px; }
+        .section { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 40px; margin: 40px 0; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .section h2 { font-size: 2.5rem; margin-bottom: 30px; text-align: center; }
+        .chart-container { position: relative; height: 400px; background: rgba(255,255,255,0.95); border-radius: 15px; padding: 20px; }
+        .indicators { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 30px; }
+        .indicator { background: rgba(255,255,255,0.15); padding: 25px; border-radius: 15px; text-align: center; transition: transform 0.3s ease; }
+        .indicator:hover { transform: translateY(-5px); }
+        .indicator-label { font-size: 1rem; opacity: 0.9; margin-bottom: 15px; }
+        .indicator-value { font-size: 3rem; font-weight: 900; color: #ffd700; }
+        .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
+        .comparison-item { background: rgba(255,255,255,0.1); padding: 25px; border-radius: 15px; }
+        .comparison-year { font-size: 2rem; font-weight: 900; color: #ffd700; margin-bottom: 15px; }
+        .comparison-quote { font-size: 1.3rem; font-style: italic; line-height: 1.6; }
+        .sentiment-gauge { position: relative; height: 200px; margin: 40px auto; max-width: 600px; }
+        .gauge-labels { display: flex; justify-content: space-between; margin-top: 20px; font-size: 1.2rem; font-weight: 700; }
+        .needle { position: absolute; bottom: 50%; left: 50%; width: 4px; height: 100px; background: #ffd700; transform-origin: bottom center; transform: translateX(-50%) rotate(var(--needle-rotation, -45deg)); transition: transform 1s ease-out; border-radius: 2px; box-shadow: 0 0 10px rgba(255,215,0,0.8); }
+        .gauge-bg { width: 100%; height: 100px; background: linear-gradient(90deg, #ff4444 0%, #ffaa44 25%, #ffff44 50%, #44ff44 75%, #44ff44 100%); border-radius: 100px 100px 0 0; position: relative; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes countUp { from { opacity: 0; } to { opacity: 1; } }
+        .footer { text-align: center; padding: 40px 20px; opacity: 0.7; font-size: 0.9rem; }
+        @media (max-width: 768px) { .hero h1 { font-size: 3rem; } .bubble-status { font-size: 5rem; } .days-number { font-size: 3rem; } .comparison { grid-template-columns: 1fr; } }
+        .loading { text-align: center; padding: 20px; font-size: 1.2rem; }
+        .milestone-annotations { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; justify-content: center; }
+        .milestone { background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; }
+        .updated-at { margin-top: 10px; font-size: 0.95rem; opacity: 0.85; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>HAS THE AI BUBBLE BURST?</h1>
+            <div class="bubble-status" id="bubbleStatus">NOT YET</div>
+            <div class="days-counter">
+                <div>Days since ChatGPT release:</div>
+                <div class="days-number" id="daysCounter">0</div>
+                <div class="subtext">Feels longer, doesn't it?</div>
+                <div class="updated-at">Stock data last refreshed: <span id="lastUpdated">loading…</span></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📈 The Magnificent 7 (AI Edition)</h2>
+            <div class="chart-container">
+                <canvas id="stockChart"></canvas>
+            </div>
+            <div class="milestone-annotations">
+                <div class="milestone">🚀 GPT-4 Released</div>
+                <div class="milestone">🤖 Everyone Panic-Rebranded to AI</div>
+                <div class="milestone">💸 First "AI Girlfriend" Funding Round</div>
+                <div class="milestone">🎪 "We're All Gonna Die" Phase</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔥 Bubble Burst Indicators</h2>
+            <div class="indicators">
+                <div class="indicator">
+                    <div class="indicator-label">VCs who've said "AGI by 2025"</div>
+                    <div class="indicator-value" id="vcCounter">0</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-label">Startups that are "ChatGPT for X"</div>
+                    <div class="indicator-value" id="startupCounter">0</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-label">LinkedIn posts with "AI" today</div>
+                    <div class="indicator-value" id="linkedinCounter">0</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-label">Ratio of AI hype to useful products</div>
+                    <div class="indicator-value">∞</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-label">Companies that added "AI" to their name</div>
+                    <div class="indicator-value" id="renameCounter">0</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-label">Nvidia's market cap in Trillions</div>
+                    <div class="indicator-value" id="nvidiaCounter">$3.4T</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🤔 Is This Time Different?</h2>
+            <div class="comparison">
+                <div class="comparison-item">
+                    <div class="comparison-year">1999</div>
+                    <div class="comparison-quote">"The internet changes everything"</div>
+                    <div class="comparison-quote">"Eyeballs > Profits"</div>
+                    <div class="comparison-quote">"This time it's different"</div>
+                    <div class="comparison-quote">"Pets.com will revolutionize pet food"</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="comparison-year">2023-2024</div>
+                    <div class="comparison-quote">"AI changes everything"</div>
+                    <div class="comparison-quote">"Users > Revenue"</div>
+                    <div class="comparison-quote">"This time it's ACTUALLY different"</div>
+                    <div class="comparison-quote">"AI will replace [insert profession]"</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Live Sentiment Tracker</h2>
+            <div class="sentiment-gauge">
+                <div class="gauge-bg">
+                    <div class="needle" id="sentimentNeedle"></div>
+                </div>
+            </div>
+            <div class="gauge-labels">
+                <span>IT'S SO OVER</span>
+                <span>WE'RE SO BACK</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Disclaimer: This is satire. We actually love AI. Please don't sue us, Big Tech.</p>
+            <p style="margin-top: 10px;">Stock data cached via GitHub Actions using free Yahoo Finance data.</p>
+        </div>
+    </div>
+
+    <script>
+        const chartContext = document.getElementById('stockChart').getContext('2d');
+        const tickers = ['NVDA', 'MSFT', 'GOOGL', 'META', 'AMZN'];
+        const palette = {
+            NVDA: '#10b981',
+            MSFT: '#3b82f6',
+            GOOGL: '#f59e0b',
+            META: '#8b5cf6',
+            AMZN: '#ec4899'
+        };
+        let stockDataset = null;
+        let stockChart = null;
+
+        const chatGPTRelease = new Date('2022-11-30');
+        const today = new Date();
+        const daysSince = Math.floor((today - chatGPTRelease) / (1000 * 60 * 60 * 24));
+        document.getElementById('daysCounter').textContent = daysSince;
+
+        function animateCounter(elementId, targetValue, suffix = '') {
+            const element = document.getElementById(elementId);
+            let current = 0;
+            const increment = targetValue / 50;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= targetValue) {
+                    element.textContent = Math.floor(targetValue) + suffix;
+                    clearInterval(timer);
+                } else {
+                    element.textContent = Math.floor(current) + suffix;
+                }
+            }, 30);
+        }
+
+        async function fetchAIMetrics() {
+            try {
+                animateCounter('vcCounter', Math.floor(daysSince * 1.2));
+                animateCounter('startupCounter', 12453);
+                animateCounter('linkedinCounter', Math.floor(Math.random() * 50000 + 80000));
+                animateCounter('renameCounter', Math.floor(daysSince * 0.8));
+            } catch (error) {
+                console.error('Error fetching AI metrics:', error);
+            }
+        }
+
+        function formatTrillions(number) {
+            return `$${Number(number).toFixed(2)}T`;
+        }
+
+        function updateMarketCap() {
+            const nvda = stockDataset?.series?.NVDA;
+            if (!nvda) return;
+            const latestPrice = nvda.closes[nvda.closes.length - 1];
+            const shares = nvda.sharesOutstanding || 24.5e9;
+            const marketCap = (latestPrice * shares) / 1e12;
+            document.getElementById('nvidiaCounter').textContent = formatTrillions(marketCap);
+        }
+
+        function initializeChart() {
+            if (!stockDataset) return;
+            const labels = stockDataset.series[tickers[0]].timestamps.map(ts => new Date(ts));
+            const datasets = tickers.map(symbol => {
+                const series = stockDataset.series[symbol];
+                if (!series) return null;
+                const color = palette[symbol];
+                return {
+                    label: symbol,
+                    data: series.closes,
+                    borderColor: color,
+                    backgroundColor: `${color}1A`,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    pointRadius: 0
+                };
+            }).filter(Boolean);
+
+            if (stockChart) {
+                stockChart.destroy();
+            }
+
+            stockChart = new Chart(chartContext, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#1f2937', font: { size: 14, weight: 'bold' } }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: { label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}` }
+                        }
+                    },
+                    scales: {
+                        x: { type: 'time', time: { unit: 'month' }, ticks: { color: '#1f2937' }, grid: { color: 'rgba(0, 0, 0, 0.1)' } },
+                        y: { beginAtZero: false, ticks: { color: '#1f2937', callback: value => `$${value.toFixed(0)}` }, grid: { color: 'rgba(0, 0, 0, 0.1)' } }
+                    },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                }
+            });
+        }
+
+        function applySentiment() {
+            const nvda = stockDataset?.series?.NVDA;
+            if (!nvda) return;
+            const change = stockDataset?.sentiment?.NVDA?.changePct5d ?? 0;
+            const rotation = Math.max(-45, Math.min(45, change * 1.5));
+            document.getElementById('sentimentNeedle').style.setProperty('--needle-rotation', `${rotation}deg`);
+        }
+
+        function updateBubbleStatus() {
+            const nvda = stockDataset?.series?.NVDA;
+            if (!nvda) return;
+            const change = stockDataset?.sentiment?.NVDA?.changePct30d ?? 0;
+            let status;
+            if (change > 20) status = 'NOPE';
+            else if (change > 10) status = 'NOT YET';
+            else if (change > 0) status = 'STILL NO';
+            else if (change > -10) status = 'GETTING CLOSER';
+            else if (change > -20) status = 'MAYBE?';
+            else status = 'POSSIBLY?';
+            document.getElementById('bubbleStatus').textContent = status;
+        }
+
+        async function loadStockData() {
+            try {
+                const response = await fetch(`data/stocks.json?cache=${Date.now()}`);
+                const data = await response.json();
+                stockDataset = data;
+                document.getElementById('lastUpdated').textContent = new Date(data.lastUpdated).toLocaleString();
+                updateMarketCap();
+                initializeChart();
+                applySentiment();
+                updateBubbleStatus();
+            } catch (error) {
+                console.error('Error loading cached stock data:', error);
+                document.getElementById('lastUpdated').textContent = 'data unavailable';
+                document.getElementById('bubbleStatus').textContent = 'DATA MIA';
+            }
+        }
+
+        fetchAIMetrics();
+        loadStockData();
+        setInterval(loadStockData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
