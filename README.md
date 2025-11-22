@@ -37,3 +37,4 @@ python scripts/update_stocks.py --demo
 1. In the repo settings, open **Pages** and set the source to **GitHub Actions**.
 2. The included workflow `.github/workflows/deploy-pages.yml` publishes the root of the repository (including `data/stocks.json`) to the `github-pages` environment on every push to `main` or via **Run workflow**.
 3. After the first deploy, GitHub shows the public URL in the workflow summary and on the Pages settings screen. For a project site, it will usually look like `https://<username>.github.io/<repo>/`.
+
