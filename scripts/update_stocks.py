@@ -108,6 +108,16 @@ def _build_sample_dataset() -> dict:
                 "changePct30d": _change_pct(prices, 30),
             }
 
+    for symbol, info in BAGHOLDER_TICKERS.items():
+        dataset["bagholders"].append(
+            {
+                "symbol": symbol,
+                "label": info["label"],
+                "color": info["color"],
+                "data": _bagholder_downtrend(symbol, info["base"], today),
+            }
+        )
+
     return dataset
 
 
@@ -125,7 +135,7 @@ def _fetch_live_data() -> Optional[dict]:
         "bagholders": BAGHOLDER_SERIES,
     }
 
-    for symbol in TICKERS:
+    for symbol in {**TICKERS, **{k: v["base"] for k, v in BAGHOLDER_TICKERS.items()}}:
         ticker = yf.Ticker(symbol)
         history = ticker.history(period="1y", interval="1d")
         if history.empty:
@@ -144,19 +154,30 @@ def _fetch_live_data() -> Optional[dict]:
 
         market_cap = round(prices[-1] * shares, 2) if shares else None
 
-        dataset["series"][symbol] = {
-            "symbol": symbol,
-            "timestamps": timestamps,
-            "closes": prices,
-            "sharesOutstanding": shares,
-            "marketCap": market_cap,
-        }
-
-        if symbol == "NVDA":
-            dataset["sentiment"][symbol] = {
-                "changePct5d": _change_pct(prices, 5),
-                "changePct30d": _change_pct(prices, 30),
+        if symbol in TICKERS:
+            dataset["series"][symbol] = {
+                "symbol": symbol,
+                "timestamps": timestamps,
+                "closes": prices,
+                "sharesOutstanding": shares,
+                "marketCap": market_cap,
             }
+
+            if symbol == "NVDA":
+                dataset["sentiment"][symbol] = {
+                    "changePct5d": _change_pct(prices, 5),
+                    "changePct30d": _change_pct(prices, 30),
+                }
+        else:
+            info = BAGHOLDER_TICKERS[symbol]
+            dataset["bagholders"].append(
+                {
+                    "symbol": symbol,
+                    "label": info["label"],
+                    "color": info["color"],
+                    "data": [{"x": ts, "y": price} for ts, price in zip(timestamps, prices)],
+                }
+            )
 
     return dataset
 
