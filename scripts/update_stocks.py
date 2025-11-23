@@ -2,7 +2,7 @@ import argparse
 import json
 import math
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -21,34 +21,27 @@ TICKERS: Dict[str, float] = {
     "AMZN": 120.0,
 }
 
-BAGHOLDER_SERIES = [
-    {
-        "label": "CoreWeave (est.)",
-        "color": "#ef4444",
-        "data": [
-            {"x": "2025-01-02", "y": 100},
-            {"x": "2025-01-09", "y": 94},
-            {"x": "2025-01-16", "y": 88},
-            {"x": "2025-01-23", "y": 77},
-            {"x": "2025-01-30", "y": 64},
-            {"x": "2025-02-06", "y": 53},
-            {"x": "2025-02-13", "y": 50},
-        ],
-    },
-    {
-        "label": "Nebius (est.)",
-        "color": "#22c55e",
-        "data": [
-            {"x": "2025-01-02", "y": 100},
-            {"x": "2025-01-09", "y": 93},
-            {"x": "2025-01-16", "y": 85},
-            {"x": "2025-01-23", "y": 74},
-            {"x": "2025-01-30", "y": 63},
-            {"x": "2025-02-06", "y": 53},
-            {"x": "2025-02-13", "y": 49},
-        ],
-    },
-]
+BAGHOLDER_TICKERS: Dict[str, Dict[str, float]] = {
+    "CRWV": {"base": 8.5, "color": "#ef4444", "label": "CoreWeave"},
+    "NBIS": {"base": 12.0, "color": "#22c55e", "label": "Nebius"},
+}
+
+def _bagholder_downtrend(symbol: str, base_price: float, today: date) -> List[dict]:
+    """Generate a deterministic 7-week downward series for sample output."""
+
+    series = []
+    for weeks_ago in range(6, -1, -1):
+        date = today - timedelta(weeks=weeks_ago)
+        # Steepen the decline toward ~50% over the window
+        discount = 0.05 * (6 - weeks_ago)
+        price = max(0.5, base_price * (1 - discount))
+        series.append(
+            {
+                "x": datetime.combine(date, datetime.min.time(), tzinfo=timezone.utc).isoformat(),
+                "y": round(price, 2),
+            }
+        )
+    return series
 
 
 def _change_pct(series: List[float], days: int) -> float:
@@ -74,7 +67,7 @@ def _build_sample_dataset() -> dict:
             "source": "sample",
             "note": "Generated offline; GitHub Actions will replace with live data when network is available.",
         },
-        "bagholders": BAGHOLDER_SERIES,
+        "bagholders": [],
     }
 
     for symbol, base_price in TICKERS.items():
@@ -112,7 +105,7 @@ def _build_sample_dataset() -> dict:
         dataset["bagholders"].append(
             {
                 "symbol": symbol,
-                "label": info["label"],
+                "label": f"{info['label']} (simulated)",
                 "color": info["color"],
                 "data": _bagholder_downtrend(symbol, info["base"], today),
             }
@@ -132,10 +125,12 @@ def _fetch_live_data() -> Optional[dict]:
         "metadata": {
             "source": "yfinance",
         },
-        "bagholders": BAGHOLDER_SERIES,
+        "bagholders": [],
     }
 
-    for symbol in {**TICKERS, **{k: v["base"] for k, v in BAGHOLDER_TICKERS.items()}}:
+    all_symbols = list(TICKERS.keys()) + list(BAGHOLDER_TICKERS.keys())
+
+    for symbol in all_symbols:
         ticker = yf.Ticker(symbol)
         history = ticker.history(period="1y", interval="1d")
         if history.empty:
