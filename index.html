@@ -124,7 +124,7 @@
 
         <div class="section">
             <h2>🏭 Nvidia Data Center Bagholders</h2>
-            <p class="indicator-label" style="text-align: center; margin-bottom: 20px;">Static private-market markdown estimates — no live pricing feeds here.</p>
+            <p class="indicator-label" id="bagholderCaption" style="text-align: center; margin-bottom: 20px;">Static private-market markdown estimates — no live pricing feeds here.</p>
             <div class="chart-container" style="margin-bottom: 30px;">
                 <canvas id="bagholderChart"></canvas>
             </div>
@@ -168,6 +168,19 @@
 
         const bagholderChartContext = document.getElementById('bagholderChart').getContext('2d');
         let bagholderChart = null;
+
+        function updateBagholderCaption(data = {}) {
+            const source = data.metadata?.source;
+            const hasBagholderPrices = Array.isArray(data.bagholders) && data.bagholders.length > 0;
+            const caption = document.getElementById('bagholderCaption');
+
+            if (source === 'yfinance' && hasBagholderPrices) {
+                caption.textContent = 'Live markdowns pulled from available Yahoo Finance proxies for GPU cloud players.';
+                return;
+            }
+
+            caption.textContent = 'Simulated markdown estimates — no public pricing feeds for private bagholders (yet).';
+        }
 
         function initializeBagholderChart(bagholderSeries = []) {
             if (bagholderChart) {
@@ -325,6 +338,7 @@
                 stockDataset = data;
                 document.getElementById('lastUpdated').textContent = new Date(data.lastUpdated).toLocaleString();
                 initializeBagholderChart(data.bagholders || []);
+                updateBagholderCaption(data);
                 updateMarketCap();
                 updatePriceTrend();
                 initializeChart();
