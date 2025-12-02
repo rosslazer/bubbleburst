@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2025-12-02T02:37:29.590104+00:00",
+  "lastUpdated": "2025-12-02T03:30:26.937613+00:00",
   "series": {
     "NVDA": {
       "symbol": "NVDA",
@@ -507,8 +507,8 @@
         177.0,
         179.92
       ],
-      "sharesOutstanding": 24387557065,
-      "marketCap": 4387809267134.8
+      "sharesOutstanding": 24305000000,
+      "marketCap": 4372955600000.0
     },
     "MSFT": {
       "symbol": "MSFT",
