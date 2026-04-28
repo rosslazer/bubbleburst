@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-28T20:01:40.558387+00:00",
+  "lastUpdated": "2026-04-28T20:52:48.313036+00:00",
   "series": {
     "NVDA": {
       "symbol": "NVDA",
@@ -507,10 +507,10 @@
         199.64,
         208.27,
         216.61,
-        213.07
+        213.17
       ],
       "sharesOutstanding": 24305000000,
-      "marketCap": 5178666350000.0
+      "marketCap": 5181096850000.0
     },
     "MSFT": {
       "symbol": "MSFT",
@@ -1529,10 +1529,10 @@
         338.89,
         344.4,
         350.34,
-        349.81
+        349.78
       ],
       "sharesOutstanding": 12097444154,
-      "marketCap": 4231806939510.74
+      "marketCap": 4231444016186.12
     },
     "META": {
       "symbol": "META",
@@ -2559,8 +2559,8 @@
   },
   "sentiment": {
     "NVDA": {
-      "changePct5d": 6.6,
-      "changePct30d": 16.29
+      "changePct5d": 6.65,
+      "changePct30d": 16.35
     }
   },
   "metadata": {
