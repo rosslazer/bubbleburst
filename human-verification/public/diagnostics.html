@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Diagnostics</title><link rel="stylesheet" href="/static/app.css"></head>
+<body><main class="card">
+<h1>Diagnostics lane</h1>
+<div class="notice">Diagnostic mode never issues approval tokens. It runs the same ceremonies and the same strict policy evaluator and records evidence rows for the device matrix. Fields are labelled <b>server-verified</b>, <b>client-reported</b>, or <b>manually observed</b>.</div>
+<h2>Policy / metadata status <span class="muted">(server)</span></h2>
+<pre id="policy" data-testid="policy-summary">loading…</pre>
+<h2>Manual observations <span class="muted">(tester-entered)</span></h2>
+<div class="grid">
+  <div><label>Device</label><input id="m-device" placeholder="e.g. iPhone 15, Pixel 8, YubiKey 5 NFC, virtual authenticator"></div>
+  <div><label>OS + version</label><input id="m-os" placeholder="e.g. iOS 18.6"></div>
+  <div><label>Desktop browser + version</label><input id="m-browser" placeholder="e.g. Chrome 140.0.7339.80 on macOS 15.6"></div>
+  <div><label>Credential provider</label><input id="m-provider" placeholder="e.g. iCloud Keychain, Google Password Manager"></div>
+  <div><label>Scenario</label><input id="m-scenario" placeholder="e.g. cross-device enrollment, BT off + phone remote"></div>
+  <div><label>Bluetooth</label><select id="m-bt"><option value="unknown">unknown</option><option value="on">on</option><option value="off">off</option></select></div>
+  <div><label>Phone physically remote?</label><select id="m-remote"><option value="false">no</option><option value="true">yes</option></select></div>
+  <div><label>Tester</label><input id="m-tester" placeholder="initials"></div>
+</div>
+<label>Observed UX (what dialogs appeared, QR shown?, prompts, failures)</label><textarea id="m-ux"></textarea>
+<label>Notes</label><textarea id="m-notes"></textarea>
+<div class="grid"><div><label>Hint</label><select id="hints"><option value="hybrid">hybrid</option><option value="client-device">client-device</option><option value="security-key">security-key</option></select></div></div>
+<h2>Run</h2>
+<button id="btn-reg" data-testid="diag-reg">Registration (direct attestation)</button>
+<button id="btn-auth" data-testid="diag-auth">Authentication (fresh assertion)</button>
+<button id="btn-save" class="secondary" data-testid="diag-save" disabled>Save evidence row</button>
+<button id="btn-export" class="secondary">Export rows (Markdown)</button>
+<div id="out" data-testid="out"></div>
+<h2>Saved rows</h2>
+<pre id="rows"></pre>
+<script src="/vendor/simplewebauthn-browser.umd.min.js"></script>
+<script src="/static/hv-client.js"></script>
+<script>
+(async function () {
+  const { api, el, renderPolicy, describeError } = window.HV;
+  const out = document.getElementById('out');
+  const pol = await api('/policy'); document.getElementById('policy').textContent = JSON.stringify({ mds: pol.body && pol.body.mds, trustAnchors: pol.body && pol.body.trustAnchors, policy: pol.body && pol.body.policy }, null, 2);
+  let last = null;
+  const manual = function () { return { device: v('m-device'), os: v('m-os'), browser: v('m-browser'), provider: v('m-provider'), scenario: v('m-scenario'), observedUx: v('m-ux'), notes: v('m-notes'), tester: v('m-tester'), bluetooth: v('m-bt'), phoneRemote: v('m-remote') === 'true' }; };
+  function v(id) { return document.getElementById(id).value; }
+  function show(title, obj) { out.prepend(el('details', { open: true }, [el('summary', { text: title }), el('pre', { text: JSON.stringify(obj, null, 2) })])); }
+  async function run(kind) {
+    const hints = [document.getElementById('hints').value];
+    const t0 = performance.now();
+    const o = await api('/diagnostics/' + kind + '/options', { method: 'POST', body: { hints } });
+    if (o.status !== 200) { show('options error', o.body); return; }
+    let cred, clientError = null;
+    try { cred = kind === 'registration' ? await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: o.body.options }) : await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: o.body.options }); }
+    catch (err) { clientError = describeError(err); }
+    const ceremonyMs = Math.round(performance.now() - t0);
+    let verify = null;
+    if (cred) verify = (await api('/diagnostics/' + kind + '/verify', { method: 'POST', body: { response: cred } })).body;
+    const clientReported = { userAgent: navigator.userAgent, hints, transports: cred && cred.response ? cred.response.transports : null, authenticatorAttachment: cred ? cred.authenticatorAttachment : null, ceremonyDurationMs: ceremonyMs, clientError, platformAuthenticatorAvailable: window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable ? await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable() : null };
+    const serverVerified = verify ? (kind === 'registration'
+      ? { libraryVerified: verify.libraryVerified, libraryError: verify.libraryError, challengeError: verify.challengeError, policy: verify.policy, credentialId: verify.credentialId, approvalToken: verify.approvalToken }
+      : { verified: verify.verified, approved: verify.approved, error: verify.error, evidence: verify.evidence, reasons: verify.reasons, approvalToken: verify.approvalToken }) : { notReached: true };
+    last = { kind, serverVerified, clientReported };
+    show(kind + ' result', { serverVerified, clientReported });
+    const policy = kind === 'registration' ? (verify && verify.policy) : (verify && verify.evidence && verify.evidence.credentialPolicy);
+    if (policy) out.prepend(renderPolicy(policy));
+    if (clientError) out.prepend(el('p', { class: 'bad', 'data-testid': 'ceremony-error', text: 'Client error: ' + clientError.name + ' – ' + clientError.message }));
+    document.getElementById('btn-save').disabled = false;
+  }
+  document.getElementById('btn-reg').addEventListener('click', function () { run('registration'); });
+  document.getElementById('btn-auth').addEventListener('click', function () { run('authentication'); });
+  document.getElementById('btn-save').addEventListener('click', async function () {
+    if (!last) return;
+    const r = await api('/diagnostics/runs', { method: 'POST', body: { kind: last.kind, serverVerified: last.serverVerified, clientReported: last.clientReported, manuallyObserved: manual() } });
+    show('saved', r.body); loadRows();
+  });
+  async function loadRows() { const r = await api('/diagnostics/runs'); document.getElementById('rows').textContent = JSON.stringify(r.body, null, 2); }
+  document.getElementById('btn-export').addEventListener('click', async function () {
+    const r = await api('/diagnostics/runs');
+    const rows = (r.body && r.body.runs) || [];
+    const lines = ['| when | kind | device | OS | browser | provider | scenario | fmt (server) | policy outcome (server) | chain valid (server) | UV flag (server) | BE/BS (server) | transports (client) | duration ms (client) | BT (observed) | remote (observed) | UX (observed) |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|'];
+    rows.forEach(function (x) {
+      const pol = x.serverVerified && (x.serverVerified.policy || (x.serverVerified.evidence && x.serverVerified.evidence.credentialPolicy));
+      const ev = pol && pol.evidence || {};
+      const m = x.manuallyObserved || {}; const c = x.clientReported || {};
+      lines.push('| ' + [x.createdAt, x.kind, m.device, m.os, m.browser, m.provider, m.scenario, ev.fmt, pol ? pol.outcome : '-', ev.chain ? ev.chain.valid : '-', ev.flags ? ev.flags.uv : '-', ev.flags ? (ev.flags.be ? 1 : 0) + '/' + (ev.flags.bs ? 1 : 0) : '-', JSON.stringify(c.transports), c.ceremonyDurationMs, m.bluetooth, m.phoneRemote, (m.observedUx || '').replace(/\|/g, '/').replace(/\n/g, ' ')].map(function (s) { return s === undefined ? '' : String(s); }).join(' | ') + ' |');
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'device-matrix-rows.md'; a.click();
+  });
+  loadRows();
+})();
+</script>
+</main></body></html>

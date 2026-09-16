@@ -1,0 +1,7 @@
+node_modules/
+data/*.sqlite*
+data/mds-blob.jwt
+evidence/exports/
+test-results/
+playwright-report/
+.env

@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Demo contact form</title><link rel="stylesheet" href="/static/app.css"></head>
+<body><main class="card">
+<h1>Demo contact form</h1>
+<p class="muted">Submitting sends the form to the demo site backend, which opens a verification session. You then approve on the verification page with a passkey (typically on your phone through the browser's cross-device flow) and are returned here.</p>
+<form id="f">
+  <label for="name">Name</label><input id="name" name="name" required value="Ada">
+  <label for="email">Email</label><input id="email" name="email" required value="ada@example.com">
+  <label for="message">Message</label><textarea id="message" name="message" required>Hello from the prototype.</textarea>
+  <button type="submit" data-testid="submit">Submit and verify</button>
+</form>
+<p id="status" class="muted" data-testid="status"></p>
+<script>
+document.getElementById('f').addEventListener('submit', async function (ev) {
+  ev.preventDefault();
+  const status = document.getElementById('status');
+  status.textContent = 'Creating verification session…';
+  const fd = new FormData(ev.target);
+  const body = { name: fd.get('name'), email: fd.get('email'), message: fd.get('message') };
+  const res = await fetch('/demo/api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const json = await res.json().catch(function () { return null; });
+  if (!res.ok || !json || !json.verifyUrl) { status.textContent = 'Could not start verification: ' + JSON.stringify(json); return; }
+  status.textContent = 'Redirecting to verification…';
+  location.href = json.verifyUrl;
+});
+</script>
+</main></body></html>

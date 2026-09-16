@@ -1,0 +1,49 @@
+{
+  "name": "human-verification-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Feasibility harness: CAPTCHA alternative using native cross-device passkeys with strict attestation policy",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run test/unit",
+    "test:api": "vitest run test/api",
+    "test:e2e": "playwright test",
+    "test:all": "npm run typecheck && npm run test && npm run test:e2e",
+    "evidence:export": "tsx scripts/export-evidence.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.1",
+    "@peculiar/asn1-android": "2.9.4",
+    "@peculiar/asn1-schema": "2.9.4",
+    "@peculiar/asn1-x509": "2.9.4",
+    "@simplewebauthn/browser": "14.0.0",
+    "@simplewebauthn/server": "14.0.2",
+    "better-sqlite3": "13.0.3",
+    "hono": "4.13.8",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@levischuck/tiny-cbor": "0.3.6",
+    "@peculiar/x509": "2.1.0",
+    "@playwright/test": "1.56.1",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "22.19.0",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
+  },
+  "packageManager": "pnpm@10.33.0"
+}

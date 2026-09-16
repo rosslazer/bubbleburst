@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Approve submission</title><link rel="stylesheet" href="/static/app.css"></head>
+<body><main class="card">
+<h1>Approve this submission</h1>
+<p class="muted" id="session-line" data-testid="session-line">Loading session…</p>
+<div class="notice">What this proves, if it succeeds: an assertion from a credential whose enrollment evidence met the configured authenticator policy, bound to this exact submission. It does not prove a unique human, Bluetooth proximity, or that a biometric (rather than a PIN) was used.</div>
+<div class="grid">
+  <div><label for="hints">Authenticator hint (WebAuthn L3 <code>hints</code>)</label>
+    <select id="hints"><option value="hybrid">hybrid (phone via QR/Bluetooth)</option><option value="client-device">client-device (this device)</option><option value="security-key">security-key</option></select></div>
+</div>
+<h2>Returning visitor</h2>
+<button id="btn-auth" data-testid="btn-auth" disabled>Approve with an existing passkey</button>
+<h2>First use</h2>
+<button id="btn-reg" class="secondary" data-testid="btn-reg" disabled>Set up a passkey (enrollment)</button>
+<p class="muted">Enrollment never approves anything by itself. After a passkey meets policy, a fresh assertion is required.</p>
+<div id="out" data-testid="out"></div>
+<form id="return-form" method="post" style="display:none"><input type="hidden" name="sessionId"><input type="hidden" name="approvalToken"></form>
+<script src="/vendor/simplewebauthn-browser.umd.min.js"></script>
+<script src="/static/hv-client.js"></script>
+<script>
+(async function () {
+  const { api, fragmentParams, el, renderPolicy, describeError, isMobileUa } = window.HV;
+  const p = fragmentParams();
+  const sessionId = p.s, clientToken = p.t;
+  const out = document.getElementById('out');
+  const line = document.getElementById('session-line');
+  const hintsSel = document.getElementById('hints');
+  if (isMobileUa()) hintsSel.value = 'client-device';
+  if (!sessionId || !clientToken) { line.textContent = 'Missing session reference in URL fragment.'; return; }
+  const st = await api('/verification-sessions/' + encodeURIComponent(sessionId), { clientToken });
+  if (st.status !== 200) { line.textContent = 'Session unavailable (' + st.status + ').'; return; }
+  let session = st.body.session;
+  const setLine = function () { line.textContent = 'Session ' + session.id.slice(0, 12) + '… · state=' + session.state + ' · action=' + session.action + ' · digest=' + session.submissionDigest.slice(0, 16) + '… · expires ' + session.expiresAt; };
+  setLine();
+  const btnAuth = document.getElementById('btn-auth'), btnReg = document.getElementById('btn-reg');
+  const base = '/verification-sessions/' + encodeURIComponent(sessionId);
+  const enable = function (on) { btnAuth.disabled = !on; btnReg.disabled = !on; };
+  if (session.state === 'pending' && window.PublicKeyCredential) enable(true);
+  else out.appendChild(el('p', { class: 'bad', text: window.PublicKeyCredential ? 'Session is ' + session.state + '; nothing to do.' : 'This browser does not support WebAuthn.' }));
+
+  function show(title, obj) { out.prepend(el('details', { open: true }, [el('summary', { text: title }), el('pre', { text: JSON.stringify(obj, null, 2) })])); }
+  function note(text, cls, testid) { out.prepend(el('p', { class: cls || '', text: text, 'data-testid': testid || 'note' })); }
+
+  btnReg.addEventListener('click', async function () {
+    enable(false); const t0 = performance.now();
+    try {
+      const o = await api(base + '/registration/options', { method: 'POST', clientToken, body: { hints: [hintsSel.value] } });
+      if (o.status !== 200) { note('Could not get registration options: ' + JSON.stringify(o.body), 'bad'); return; }
+      let cred;
+      try { cred = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: o.body.options }); }
+      catch (err) { const d = describeError(err); note('Browser/authenticator did not complete enrollment: ' + d.name + ' – ' + d.message + ' (record as "cross-device UI unavailable" if the QR dialog never appeared).', 'bad', 'ceremony-error'); show('client error', d); return; }
+      const v = await api(base + '/registration/verify', { method: 'POST', clientToken, body: { response: cred, hints: [hintsSel.value] } });
+      const ms = Math.round(performance.now() - t0);
+      show('registration verify response (' + ms + ' ms, client-reported transports=' + JSON.stringify(cred.response && cred.response.transports) + ', attachment=' + cred.authenticatorAttachment + ')', v.body);
+      out.prepend(renderPolicy(v.body.policy));
+      note(v.body.meetsPolicy ? 'Credential meets the configured authenticator policy. Now approve with a fresh assertion.' : 'Credential does not meet the configured authenticator policy; it cannot approve this submission.', v.body.meetsPolicy ? 'ok' : 'bad', 'reg-result');
+    } finally { enable(true); }
+  });
+
+  btnAuth.addEventListener('click', async function () {
+    enable(false); const t0 = performance.now();
+    try {
+      const o = await api(base + '/authentication/options', { method: 'POST', clientToken, body: { hints: [hintsSel.value] } });
+      if (o.status !== 200) { note('Could not get authentication options: ' + JSON.stringify(o.body), 'bad'); return; }
+      let asr;
+      try { asr = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: o.body.options }); }
+      catch (err) { const d = describeError(err); note('Browser/authenticator did not complete the assertion: ' + d.name + ' – ' + d.message, 'bad', 'ceremony-error'); show('client error', d); return; }
+      const v = await api(base + '/authentication/verify', { method: 'POST', clientToken, body: { response: asr } });
+      const ms = Math.round(performance.now() - t0);
+      show('authentication verify response (' + ms + ' ms)', v.body);
+      if (v.body.approved && v.body.approvalToken && v.body.returnUrl) {
+        note('Approved: credential meets configured authenticator policy. Returning to the form…', 'ok', 'auth-result');
+        const f = document.getElementById('return-form'); f.action = v.body.returnUrl; f.sessionId.value = sessionId; f.approvalToken.value = v.body.approvalToken; f.submit();
+      } else {
+        note('Not approved: ' + (v.body.reasons && v.body.reasons.length ? v.body.reasons.join('; ') : (v.body.error || 'unknown')), 'bad', 'auth-result');
+        if (v.body.evidence && v.body.evidence.credentialPolicy) out.prepend(renderPolicy(v.body.evidence.credentialPolicy));
+      }
+    } finally { const s2 = await api(base, { clientToken }); if (s2.status === 200) { session = s2.body.session; setLine(); } enable(session.state === 'pending'); }
+  });
+})();
+</script>
+</main></body></html>
