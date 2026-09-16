@@ -4,6 +4,11 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+  # GITHUB_TOKEN commits from the updater do not trigger push workflows.
+  workflow_run:
+    workflows: [ "Refresh stock data" ]
+    types: [ completed ]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -16,10 +21,15 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # The refresh run's head SHA predates its data commit. Fetch main
+          # after it finishes so the artifact includes the updated JSON.
+          ref: main
 
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
