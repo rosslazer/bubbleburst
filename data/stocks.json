@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-10-30T06:12:24.276625+00:00",
+  "lastUpdated": "2026-10-30T13:19:09.384756+00:00",
   "series": {
     "NVDA": {
       "symbol": "NVDA",
@@ -1020,8 +1020,8 @@
         531.01,
         530.14
       ],
-      "sharesOutstanding": 7425545491,
-      "marketCap": 3936578686598.74
+      "sharesOutstanding": 7426194552,
+      "marketCap": 3936922779797.28
     },
     "GOOGL": {
       "symbol": "GOOGL",
@@ -1531,8 +1531,8 @@
         324.89,
         283.82
       ],
-      "sharesOutstanding": 12229934831,
-      "marketCap": 3471100103734.42
+      "sharesOutstanding": 12294000000,
+      "marketCap": 3489283080000.0
     },
     "META": {
       "symbol": "META",
@@ -2553,8 +2553,8 @@
         254.6,
         243.79
       ],
-      "sharesOutstanding": 10786313572,
-      "marketCap": 2629595385717.88
+      "sharesOutstanding": 10811000000,
+      "marketCap": 2635613690000.0
     }
   },
   "sentiment": {
