@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-10-31T22:42:39.728032+00:00",
+  "lastUpdated": "2026-11-01T01:52:02.121119+00:00",
   "series": {
     "NVDA": {
       "symbol": "NVDA",
@@ -2553,8 +2553,8 @@
         243.79,
         240.35
       ],
-      "sharesOutstanding": 10811000000,
-      "marketCap": 2598423850000.0
+      "sharesOutstanding": 10813138306,
+      "marketCap": 2598937791847.1
     }
   },
   "sentiment": {
